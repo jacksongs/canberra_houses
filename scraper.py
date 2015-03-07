@@ -117,7 +117,7 @@ for link in scraperwiki.sql.select("* from suburbs")[4:5]:
 					print e,link["Link"],'Something in the main box did not work'
 			except Exception as e:
 				print e,link["Link"],'Getting data did not work'
-			lasthouse = scraperwiki.sql.select("* from data where Link=? order by 'When' desc limit 1",house["Link"])
+			lasthouse = scraperwiki.sql.select("* from data where Link=? order by 'When' desc limit 1",[house["Link"]])
 			if lasthouse == []:
 				dic = {}
 				for k in house.keys():
