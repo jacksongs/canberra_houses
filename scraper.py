@@ -135,10 +135,11 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					if h == 'Auction date':
 						if lasthouse[0][h] == 'No value bro!':
 							same = False
+							scraperwiki.sqlite.save(unique_keys=[],data={"Link":house["Link"],"Field":h,"Old":lasthouse[0[h],"New":house[h]},table_name='change')
 						else:
 							if house[h] != dateutil.parser.parse(lasthouse[0][h]):
-								same = False
+								scraperwiki.sqlite.save(unique_keys=[],data={"Link":house["Link"],"Field":h,"Old":lasthouse[0[h],"New":house[h]},table_name='change')
 					elif house[h] != lasthouse[0][h]:
-						same = False
+						scraperwiki.sqlite.save(unique_keys=[],data={"Link":house["Link"],"Field":h,"Old":lasthouse[0[h],"New":house[h]},table_name='change')
 			if same == False:
 				scraperwiki.sqlite.save(unique_keys=[],data=house,table_name='data')
