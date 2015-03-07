@@ -50,7 +50,7 @@ try:
 except:
     pass
 
-for link in scraperwiki.sql.select("* from suburbs")[4:5]:
+for link in scraperwiki.sql.select("* from suburbs"):
 	page = requests.get("http://allhomes.com.au/"+link["Link"])
 	soup = BeautifulSoup(page.content)
 	trs = soup.find_all("tr")
