@@ -66,7 +66,7 @@ except:
 	pass
 
 
-for link in scraperwiki.sql.select("* from suburbs")[8:11]:
+for link in scraperwiki.sql.select("* from suburbs"):
 
 	houses = [] # this is to hold all the data on the houses in each suburb for saving to the database
 	
