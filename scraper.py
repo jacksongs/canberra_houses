@@ -42,18 +42,123 @@ scraperwiki.sqlite.save(unique_keys=["Link"],data=subs,table_name='suburbs')
 
 try:
     scraperwiki.sqlite.execute("""
-        create table data
+        create table houses
         ( 
-        Link
+        id INTEGER PRIMARY KEY AUTOINCREMENT,	
+        Link,
+        Suburb,
+        Active
         )
     """)
 except:
-    pass
+	pass
 
-for link in scraperwiki.sql.select("* from suburbs"):
+try:
+    scraperwiki.sqlite.execute("""
+    	create table listings
+        ( 
+        id INTEGER PRIMARY KEY AUTOINCREMENT,	
+        Link,
+        Updated
+        )
+    """)
+except:
+	pass
+
+
+for link in scraperwiki.sql.select("* from suburbs")[8:11]:
+
+	houses = [] # this is to hold all the data on the houses in each suburb for saving to the database
+	
 	page = requests.get("http://allhomes.com.au/"+link["Link"])
 	soup = BeautifulSoup(page.content)
 	trs = soup.find_all("tr")
+
+	# first we are going to get at all the houses that are recorded on the suburb page and compare them with all the houses that are marked as 'current in our database'
+
+	oldhouses = scraperwiki.sql.select("* from houses where Active=1 and Suburb=?",[link["Name"]])
+
+	for no,tr in enumerate(trs):
+		if no == 0:
+			pass
+		elif tr.get("class") == ['primary_colour']:
+			pass
+		else:
+			# so now we look at each of the houses...
+
+			# first up, the house info
+
+			house = {}
+
+			# first off, the image link
+
+			try:
+				thumb = tr.td.div.a.img.get("src")
+				house["Image"] = thumb.replace("_ps.jpg",".jpg")
+			except Exception as e:
+				print e,link["Link"],'Image did not work'
+
+
+			# now, the info the icons - this is all house related
+
+			try:
+				icons = tr.td.next_sibling.next_sibling.div.div.next_sibling.next_sibling.next_sibling.next_sibling
+				for i in icons.contents:
+					if isinstance(i, bs4.element.NavigableString) == False:
+						if i.get("class") == ['otherIcons']:
+							for w in i.contents:
+								if isinstance(w, bs4.element.NavigableString) == False:
+									house[w.img.get("title")]=w.text.strip()
+			except Exception as e:
+				print e,link["Link"],'Icons did not work'
+
+			# And this is the more generic stuff
+
+			try:
+				house["Type"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+				house["EER"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+			except Exception as e:
+				print e,link["Link"],'Either the property type or EER did not work'
+			try:
+				house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0]
+				house["Suburb"]=link["Name"]
+				house["Link"]=tr.td.next_sibling.next_sibling.div.div.a.get("href")
+				house["When"] = datetime.datetime.now()
+				house["Active"] = True
+			except Exception as e:
+				print e,link["Link"],'Something in the main box did not work'
+
+			# now let's add it to the list of houses for our test to see if it's no longer active a bit later
+			houses.append(house)
+
+	# now for each house we need to check if we should save it (ie if it's a new house)
+	for hou in houses:
+
+		latch = []
+		
+		for o in oldhouses:
+			if o['Link'] == hou['Link']:
+				latch.append(True)
+
+		if len(latch) == 0: # ie: it's not in the old houses
+			scraperwiki.sqlite.save(unique_keys=['Link'],data=hou,table_name='houses')
+
+	# now we do the opposite -  check whether there are any houses that have dropped off the list
+
+	for o in oldhouses: # for each of the previous entries
+
+		catch = [] # This is our catch to check if one of the new houses is the same as one of the old houses
+
+		for ho in houses:
+			if o['Link'] == ho['Link']:
+				catch.append(True)
+
+		if len(catch) == 0:
+			statement = "update houses set Active=0 where Link=?"
+			scraperwiki.sqlite.execute(statement,o['Link'])
+
+
+	# alright now it's listing time!
 	for no,tr in enumerate(trs):
 		if no == 0:
 			pass
@@ -61,85 +166,68 @@ for link in scraperwiki.sql.select("* from suburbs"):
 			pass
 		else:
 			try:
-				house = {}
+				# This is all about the listing
 				try:
-					thumb = tr.td.div.a.img.get("src")
-					house["Image"] = thumb.replace("_ps.jpg",".jpg")
-				except Exception as e:
-					print e,link["Link"],'Image did not work'
-				try:
-					icons = tr.td.next_sibling.next_sibling.div.div.next_sibling.next_sibling.next_sibling.next_sibling
-					for i in icons.contents:
-						if isinstance(i, bs4.element.NavigableString) == False:
-							if i.get("class") == ['otherIcons']:
-								for w in i.contents:
-									if isinstance(w, bs4.element.NavigableString) == False:
-										house[w.img.get("title")]=w.text.strip()
-				except Exception as e:
-					print e,link["Link"],'Icons did not work'
-				try:
-					house["Auction"] = 'Auction' in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					if house["Auction"] == True:
+					listing = {}
+					listing["Link"]=tr.td.next_sibling.next_sibling.div.div.a.get("href")
+					listing["Sold"] = tr.find("span",class_="badge-sold")!=None
+					listing["New"] = tr.find("span",class_="badge-new")!=None
+					listing["New price"] = tr.find("span",class_="badge-new-price")!=None
+					listing["Updated"] = datetime.datetime.now()
+					listing["Auction"] = 'Auction' in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					if listing["Auction"] == True:
 						if " " in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip():
 							date = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split(" ")[1]
-							house["Auction date"] = dateutil.parser.parse(date)
-					house["Under offer"] = "Under offer" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					house["Negotiation"] = "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					house["Range"] = "-" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					if house["Range"] == True:
-						house["Range low"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip()
-						house["Range high"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip()
-					house["Upwards of"] = u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					if house["Upwards of"] == True:
-						house["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("+","")
-					if house["Auction"] == False:
-						if house["Under offer"] == False:
-							if house["Negotiation"] == False:
-								if house["Range"] == False:
-									if house["Upwards of"] == False:
-										house["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+							listing["Auction date"] = dateutil.parser.parse(date)
+					listing["Under offer"] = "Under offer" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					listing["Negotiation"] = "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					listing["Range"] = "-" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					if listing["Range"] == True:
+						listing["Range low"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip()
+						listing["Range high"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip()
+					listing["Upwards of"] = u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					if listing["Upwards of"] == True:
+						listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("+","")
+					if listing["Auction"] == False:
+						if listing["Under offer"] == False:
+							if listing["Negotiation"] == False:
+								if listing["Range"] == False:
+									if listing["Upwards of"] == False:
+										listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 				except Exception as e:
-					print e,link["Link"],'Something went wrong with the price for',tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-				try:
-					house["Type"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					house["EER"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-				except Exception as e:
-					print e,link["Link"],'Either the property type or EER did not work'
-				try:
-					house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0]
-					house["Suburb"]=link["Name"]
-					house["Link"]=tr.td.next_sibling.next_sibling.div.div.a.get("href")
-					house["Sold"] = tr.find("span",class_="badge-sold")!=None
-					house["New"] = tr.find("span",class_="badge-new")!=None
-					house["New price"] = tr.find("span",class_="badge-new-price")!=None
-					house["When"] = datetime.datetime.now()
-				except Exception as e:
-					print e,link["Link"],'Something in the main box did not work'
-			except Exception as e:
-				print e,link["Link"],'Getting data did not work'
-			lasthouse = scraperwiki.sql.select("* from data where Link=? order by 'When' desc limit 1",[house["Link"]])
-			if lasthouse == []:
-				dic = {}
-				for k in house.keys():
-					dic[k] = 'No value bro!'
-				lasthouse.append(dic)
-			same = True
-			for h in house.keys():
-				if h == 'When':
-					pass
+					print e,link["Link"],'Something went wrong with the listing for',tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+
+				# now let's get the most recent listing
+				lastlisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",[listing["Link"]])
+
+				# let's see if they have changed
+				snatch = []
+				if lastlisting == []:
+					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings') # first we save it if there's no records listed
 				else:
-					if house[h] == True:
-						house[h] = 1
-					elif house[h] == False:
-						house[h] = 0
-					if h == 'Auction date':
-						if lasthouse[0][h] == 'No value bro!':
-							same = False
-							scraperwiki.sqlite.save(unique_keys=[],data={"Link":house["Link"],"Field":h,"Old":lasthouse[0[h],"New":house[h]},table_name='change')
-						else:
-							if house[h] != dateutil.parser.parse(lasthouse[0][h]):
-								scraperwiki.sqlite.save(unique_keys=[],data={"Link":house["Link"],"Field":h,"Old":lasthouse[0[h],"New":house[h]},table_name='change')
-					elif house[h] != lasthouse[0][h]:
-						scraperwiki.sqlite.save(unique_keys=[],data={"Link":house["Link"],"Field":h,"Old":lasthouse[0[h],"New":house[h]},table_name='change')
-			if same == False:
-				scraperwiki.sqlite.save(unique_keys=[],data=house,table_name='data')
+					for l in listing.keys():
+						if l == 'Updated':
+							pass
+						elif l == 'Auction date':
+							if listing[l] != dateutil.parser.parse(lastlisting[0][l]):
+								snatch.append(l)
+						elif listing[l] == True:
+							if 1 != lastlisting[0][l]:
+								snatch.append(l)
+						elif listing[l] == False:
+							if 0 != lastlisting[0][l]:
+								snatch.append(l)
+						elif listing[l] != lastlisting[0][l]:
+							snatch.append(l)
+
+				if len(snatch)>0:
+					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
+
+			except Exception as e:
+				print e,link["Link"],'Something went wrong saving the listing'
+
+
+
+
+
+			
