@@ -209,8 +209,9 @@ for link in scraperwiki.sql.select("* from suburbs")[20:23]:
 					if len(snatch)>0:
 						scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
 
-					# and if they haven't changed, let's do nothing! (just make sure your other system is grabbing this regularly!)
+					# and if they haven't changed, let's delete the listing (just make sure your other system is grabbing this regularly!)
 					else:
+						scraperwiki.sqlite.execute("delete from listings where link=?",listing["Link"]) 
 						pass
 
 			except Exception as e:
