@@ -116,9 +116,13 @@ for link in scraperwiki.sql.select("* from suburbs"):
 
 			try:
 				house["Type"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-				house["EER"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 			except Exception as e:
-				print e,link["Link"],'Either the property type or EER did not work'
+				print e,link["Link"],'The property type did not work'
+			try:
+				house["EER"] = float(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip())
+			except Exception as e:
+				print e,link["Link"],'The EER did not work'
+								
 			try:
 				house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0]
 				house["Suburb"]=link["Name"]
