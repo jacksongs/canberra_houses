@@ -123,7 +123,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0]
 				house["Suburb"]=link["Name"]
 				house["Link"]=tr.td.next_sibling.next_sibling.div.div.a.get("href")
-				house["When"] = datetime.datetime.now()
+				house["Added"] = datetime.datetime.now()
 				house["Active"] = True
 			except Exception as e:
 				print e,link["Link"],'Something in the main box did not work'
