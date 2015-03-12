@@ -1,26 +1,7 @@
-# This is a template for a Python scraper on Morph (https://morph.io)
-# including some code snippets below that you should find helpful
-
-#import scraperwiki
-# import lxml.html
-#
-# # Read in a page
-# html = scraperwiki.scrape("http://foo.com")
-#
-# # Find something on the page using css selectors
-# root = lxml.html.fromstring(html)
-# root.cssselect("div[align='left']")
-#
-# # Write out to the sqlite database using scraperwiki library
-# scraperwiki.sqlite.save(unique_keys=['name'], data={"name": "susan", "occupation": "software developer"})
-#
-# # An arbitrary query against the database
-# scraperwiki.sql.select("* from data where 'name'='peter'")
-
-# You don't have to do things with the ScraperWiki and lxml libraries. You can use whatever libraries are installed
-# on Morph for Python (https://github.com/openaustralia/morph-docker-python/blob/master/pip_requirements.txt) and all that matters
-# is that your final data is written to an Sqlite database called data.sqlite in the current working directory which
-# has at least a table called data.
+# This scraper collects all the houses that have ever been listed on allhomes (Starting from when it runs).
+# The thinking is that this record of houses should top out at the number of dwellings in canberra.
+# It also stores at any time listings that are new or changed in the last 24 hours.
+# It is designed to be run once per day, and for another system to consumer and aggregate the listings.
 
 import scraperwiki
 import requests
@@ -66,7 +47,7 @@ except:
 	pass
 
 
-for link in scraperwiki.sql.select("* from suburbs"):
+for link in scraperwiki.sql.select("* from suburbs")[20:23]:
 
 	houses = [] # this is to hold all the data on the houses in each suburb for saving to the database
 	
@@ -74,9 +55,11 @@ for link in scraperwiki.sql.select("* from suburbs"):
 	soup = BeautifulSoup(page.content)
 	trs = soup.find_all("tr")
 
-	# first we are going to get at all the houses that are recorded on the suburb page and compare them with all the houses that are marked as 'current in our database'
+	# first let's collect all our listings of houses in the suburb
 
-	oldhouses = scraperwiki.sql.select("* from houses where Active=1 and Suburb=?",[link["Name"]])
+	oldhouses = scraperwiki.sql.select("* from houses where Suburb=?",[link["Name"]])
+
+	# now we will go through each house currently listed on allhomes and add it to our houses list
 
 	for no,tr in enumerate(trs):
 		if no == 0:
@@ -135,31 +118,27 @@ for link in scraperwiki.sql.select("* from suburbs"):
 			# now let's add it to the list of houses for our test to see if it's no longer active a bit later
 			houses.append(house)
 
-	# now for each house we need to check if we should save it (ie if it's a new house)
-	for hou in houses:
+	# so now we have the oldlistings and the new listings
 
-		latch = []
-		
-		for o in oldhouses:
-			if o['Link'] == hou['Link']:
-				latch.append(True)
-
-		if len(latch) == 0: # ie: it's not in the old houses
-			scraperwiki.sqlite.save(unique_keys=['Link'],data=hou,table_name='houses')
-
-	# now we do the opposite -  check whether there are any houses that have dropped off the list
+	# let's first ensure houses that are now longer listed are deactivated and saved
 
 	for o in oldhouses: # for each of the previous entries
 
 		catch = [] # This is our catch to check if one of the new houses is the same as one of the old houses
 
 		for ho in houses:
-			if o['Link'] == ho['Link']:
-				catch.append(True)
+			if o['Address 1'] == ho['Address 1']:
+				if o['Suburb'] == ho['Suburb']:
+					catch.append(True)
 
+		# we make sure we save these as otherwise they will be lost forever
 		if len(catch) == 0:
-			statement = "update houses set Active=0 where Link=?"
-			scraperwiki.sqlite.execute(statement,o['Link'])
+			o['Active'] == False
+			scraperwiki.sqlite.save(unique_keys=['Address 1','Suburb'],data=o,table_name='houses')
+
+	# now let's save the houses listed
+	for hou in houses:
+		scraperwiki.sqlite.save(unique_keys=['Address 1','Suburb'],data=hou,table_name='houses')
 
 
 	# alright now it's listing time!
@@ -204,11 +183,13 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				# now let's get the most recent listing
 				lastlisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",[listing["Link"]])
 
-				# let's see if they have changed
-				snatch = []
+				# first we save it if there are no records listed
 				if lastlisting == []:
-					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings') # first we save it if there's no records listed
+					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings') 
+
+				# or if there are records listed, let's see if they have changed
 				else:
+					snatch = []
 					for l in listing.keys():
 						if l == 'Updated':
 							pass
@@ -224,8 +205,13 @@ for link in scraperwiki.sql.select("* from suburbs"):
 						elif listing[l] != lastlisting[0][l]:
 							snatch.append(l)
 
-				if len(snatch)>0:
-					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
+					# if they have changed, let's save it
+					if len(snatch)>0:
+						scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
+
+					# and if they haven't changed, let's do nothing! (just make sure your other system is grabbing this regularly!)
+					else:
+						pass
 
 			except Exception as e:
 				print e,link["Link"],'Something went wrong saving the listing'
