@@ -40,6 +40,7 @@ try:
         ( 
         id INTEGER PRIMARY KEY AUTOINCREMENT,	
         Link,
+        Suburb,
         Updated
         )
     """)
