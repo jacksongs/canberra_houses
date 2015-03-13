@@ -177,20 +177,45 @@ for link in scraperwiki.sql.select("* from suburbs"):
 							date = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split(" ")[1]
 							listing["Auction date"] = dateutil.parser.parse(date)
 					listing["Under offer"] = "Under offer" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
-					listing["Negotiation"] = "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					listing["Negotiation"] = "negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					listing["Range"] = "-" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					if listing["Range"] == True:
 						listing["Range low"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip().replace("$","").replace(",","")
 						listing["Range high"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip().replace("$","").replace(",","")
-					listing["Upwards of"] = u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+					listing["Upwards of"] = "offers over" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "offers from" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "plus" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower()
 					if listing["Upwards of"] == True:
-						listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("+","").replace("$","").replace(",","")
+						try:
+							listing["Range low"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower().replace("offers over","").replace("offers from","").replace("plus","").replace("+","").replace("$","").replace(",","").strip())
+							listing["Price"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower().replace("offers over","").replace("offers from","").replace("plus","").replace("+","").replace("$","").replace(",","").strip())
+						except:
+							print 'Problem with the upwards of price for',listing["Link"]
+					listing["Asking"] = "ono" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "asking" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower()
+					if listing["Asking"] == True:
+						try:
+							listing["Range high"] == int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower().replace("ono","").replace("asking","").replace("+","").replace("$","").replace(",","").strip())
+							listing["Price"] == int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower().replace("ono","").replace("asking","").replace("+","").replace("$","").replace(",","").strip())
+						except:
+							print 'Problem with the asking or ono price for',listing["Link"]
+
+					listing["EOI"] = "eoi" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "expressions of interest" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower()
+					if listing["EOI"] == True:
+						try:
+							listing["EOI end"] = dateutil.parser.parse(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split(" ")[-1])
+						except:
+							print 'could not grab the EOI end data sadly for',listing["Link"]
+					# need to add more here
+
 					if listing["Auction"] == False:
 						if listing["Under offer"] == False:
 							if listing["Negotiation"] == False:
 								if listing["Range"] == False:
 									if listing["Upwards of"] == False:
-										listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("$","").replace(",","")
+										if listing["Asking"] == False:
+											if listing["EOI"] == False:
+												try:
+													listing["Price"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("$","").replace(",",""))
+												except:
+													print 'sorry, the price did not work for',listing["Link"]
 				except Exception as e:
 					print e,link["Link"],'Something went wrong with the listing for',tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 
