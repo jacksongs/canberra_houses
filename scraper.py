@@ -107,7 +107,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				print e,link["Link"],'The EER did not work'
 								
 			try:
-				house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0]
+				house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0].strip()
 				house["Suburb"]=link["Name"]
 				house["Link"]=tr.td.next_sibling.next_sibling.div.div.a.get("href")
 				house["Added"] = datetime.datetime.now()
@@ -164,6 +164,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				# This is all about the listing
 				try:
 					listing = {}
+					listing["Suburb"] = link["Name"]
 					listing["Link"]=tr.td.next_sibling.next_sibling.div.div.a.get("href")
 					listing["Sold"] = tr.find("span",class_="badge-sold")!=None
 					listing["New"] = tr.find("span",class_="badge-new")!=None
@@ -193,7 +194,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					print e,link["Link"],'Something went wrong with the listing for',tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 
 				# now let's get the most recent listing
-				lastlisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",[listing["Link"]])
+				lastlisting = scraperwiki.sql.select("* from listings where Link=? and Suburb=? order by 'Updated' desc limit 1",(listing["Link"],listing["Name"]))
 
 				snatch = []
 				# first let's save the listing if it is a new house
