@@ -180,17 +180,17 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					listing["Negotiation"] = "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					listing["Range"] = "-" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					if listing["Range"] == True:
-						listing["Range low"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip()
-						listing["Range high"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip()
+						listing["Range low"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip().replace("$","").replace(",","")
+						listing["Range high"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip().replace("$","").replace(",","")
 					listing["Upwards of"] = u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					if listing["Upwards of"] == True:
-						listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("+","")
+						listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("+","").replace("$","").replace(",","")
 					if listing["Auction"] == False:
 						if listing["Under offer"] == False:
 							if listing["Negotiation"] == False:
 								if listing["Range"] == False:
 									if listing["Upwards of"] == False:
-										listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+										listing["Price"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().replace("$","").replace(",","")
 				except Exception as e:
 					print e,link["Link"],'Something went wrong with the listing for',tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 
