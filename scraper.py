@@ -180,8 +180,12 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					listing["Negotiation"] = "negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					listing["Range"] = "-" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					if listing["Range"] == True:
-						listing["Range low"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip().replace("$","").replace(",","")
-						listing["Range high"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip().replace("$","").replace(",","")
+						try:
+							listing["Range low"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip().replace("$","").replace(",",""))
+							listing["Range high"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip().replace("$","").replace(",",""))
+							listing["Price"] = (listing["Range low"] + listing["Range high"]/2
+						except:
+							print 'Problemt with the range pricing for',listing["Link"]
 					listing["Upwards of"] = "offers over" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "offers from" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "plus" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower()
 					if listing["Upwards of"] == True:
 						try:
