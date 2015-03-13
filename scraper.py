@@ -125,7 +125,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					intcatch.append(c)
 				except:
 					pass
-			if incatch == []:
+			if intcatch == []:
 				pass
 			else:
 				houses.append(house)
