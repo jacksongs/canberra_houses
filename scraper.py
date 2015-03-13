@@ -195,7 +195,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					print e,link["Link"],'Something went wrong with the listing for',tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 
 				# now let's get the most recent listing
-				lastlisting = scraperwiki.sql.select("* from listings where Link=? and Suburb=? order by 'Updated' desc limit 1",(listing["Link"],listing["Name"]))
+				lastlisting = scraperwiki.sql.select("* from listings where Link=? and Suburb=? order by 'Updated' desc limit 1",(listing["Link"],link["Name"]))
 
 				snatch = []
 				# first let's save the listing if it is a new house
