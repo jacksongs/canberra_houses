@@ -116,7 +116,19 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				print e,link["Link"],'Something in the main box did not work'
 
 			# now let's add it to the list of houses for our test to see if it's no longer active a bit later
-			houses.append(house)
+			# but let's only add it if it's a real address (and not a stupid project marketing piece of crap)
+			# we only need to do this for houses because if we later try to match a listing with a non-listed house, it will not be saved
+			intcatch = []
+			for c in house["Address 1"]:
+				try:
+					int(c)
+					intcatch.append(c)
+				except:
+					pass
+			if incatch == []:
+				pass
+			else:
+				houses.append(house)
 
 	# so now we have the oldlistings and the new listings
 
