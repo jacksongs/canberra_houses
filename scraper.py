@@ -1,6 +1,6 @@
 # This scraper collects all the houses that have ever been listed on allhomes (Starting from when it runs).
 # The thinking is that this record of houses should top out at the number of dwellings in canberra.
-# It also stores at any time the current listings, which are also a static number, as well as any changes that have been recorded.
+# It also stores at any time the last listing for each house, as well as any changes that have been recorded.
 # It is designed to be run once per day, and for another system to consumer and aggregate the data.
 
 import scraperwiki
@@ -198,7 +198,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				snatch = []
 				# first let's save the listing if it is a new house
 				if lastlisting == []:
-					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
+					scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
 					scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
 
 				# or if there are records listed, let's see if they have changed
@@ -227,7 +227,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				if len(snatch)>0:
 					scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
 
-				# and if they haven't changed, let's do nothing (just make sure your other system is grabbing this regularly!)
+				# and if they haven't changed, let's do nothing
 				else:
 					pass
 
