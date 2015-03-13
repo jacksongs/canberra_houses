@@ -225,7 +225,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 
 				# if they have changed, let's save the latest listing
 				if len(snatch)>0:
-					scraperwiki.sqlite.save(unique_keys=["Address 1","Suburb"],data=listing,table_name='listings')
+					scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
 
 				# and if they haven't changed, let's do nothing (just make sure your other system is grabbing this regularly!)
 				else:
