@@ -1,7 +1,7 @@
 # This scraper collects all the houses that have ever been listed on allhomes (Starting from when it runs).
 # The thinking is that this record of houses should top out at the number of dwellings in canberra.
-# It also stores at any time listings that are new or changed in the last 24 hours.
-# It is designed to be run once per day, and for another system to consumer and aggregate the listings.
+# It also stores at any time the current listings, which are also a static number, as well as any changes that have been recorded.
+# It is designed to be run once per day, and for another system to consumer and aggregate the data.
 
 import scraperwiki
 import requests
@@ -183,14 +183,15 @@ for link in scraperwiki.sql.select("* from suburbs")[20:23]:
 				# now let's get the most recent listing
 				lastlisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",[listing["Link"]])
 
-				# first we save it if there are no records listed
+				snatch = []
+				# first let's save the listing if it is a new house
 				if lastlisting == []:
 					scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
 					scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
 
 				# or if there are records listed, let's see if they have changed
 				else:
-					snatch = []
+
 					for l in listing.keys():
 						if l == 'Updated':
 							pass
@@ -210,14 +211,13 @@ for link in scraperwiki.sql.select("* from suburbs")[20:23]:
 							snatch.append(l)
 							scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":l,"Old value":lastlisting[0][l],"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
 
-					# if they have changed, let's save it
-					if len(snatch)>0:
-						scraperwiki.sqlite.save(unique_keys=[],data=listing,table_name='listings')
+				# if they have changed, let's save the latest listing
+				if len(snatch)>0:
+					scraperwiki.sqlite.save(unique_keys=["Address 1","Suburb"],data=listing,table_name='listings')
 
-					# and if they haven't changed, let's delete the listing (just make sure your other system is grabbing this regularly!)
-					else:
-						scraperwiki.sqlite.execute("delete from listings where link=?",listing["Link"]) 
-						pass
+				# and if they haven't changed, let's do nothing (just make sure your other system is grabbing this regularly!)
+				else:
+					pass
 
 			except Exception as e:
 				print e,link["Link"],'Something went wrong saving the listing'
