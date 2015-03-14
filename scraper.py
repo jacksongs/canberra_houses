@@ -175,7 +175,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					if listing["Auction"] == True:
 						if " " in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip():
 							date = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split(" ")[1]
-							listing["Auction date"] = dateutil.parser.parse(date)
+							listing["Auction date"] = dateutil.parser.parse(date,dayfirst=True)
 					listing["Under offer"] = "Under offer" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					listing["Negotiation"] = "negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "(by negotiation)" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "By Negotiation" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
 					listing["Range"] = "-" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
@@ -204,7 +204,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					listing["EOI"] = "eoi" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "expressions of interest" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower()
 					if listing["EOI"] == True:
 						try:
-							listing["EOI end"] = dateutil.parser.parse(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split(" ")[-1])
+							listing["EOI end"] = dateutil.parser.parse(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split(" ")[-1],dayfirst=True)
 						except:
 							print 'could not grab the EOI end data sadly for',listing["Link"]
 					# need to add more here
@@ -239,9 +239,10 @@ for link in scraperwiki.sql.select("* from suburbs"):
 						if l == 'Updated':
 							pass
 						elif l == 'Auction date':
-							if listing[l] != dateutil.parser.parse(lastlisting[0][l]):
+							oldvalue = dateutil.parser.parse(lastlisting[0][l],dayfirst=True)
+							if listing[l] != oldvalue:
 								snatch.append(l)
-								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"Auction date","Old value":dateutil.parser.parse(lastlisting[0][l]),"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
+								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"Auction date","Old value":oldvalue,"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
 						elif listing[l] == True:
 							if 1 != lastlisting[0][l]:
 								snatch.append(l)
