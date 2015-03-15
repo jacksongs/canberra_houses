@@ -183,9 +183,9 @@ for link in scraperwiki.sql.select("* from suburbs"):
 						try:
 							listing["Range low"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[0].strip().replace("$","").replace(",",""))
 							listing["Range high"] = int(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().split("-")[1].strip().replace("$","").replace(",",""))
-							listing["Price"] = (listing["Range low"] + listing["Range high"]/2
+							listing["Price"] = (listing["Range low"] + listing["Range high"])/2
 						except:
-							print 'Problemt with the range pricing for',listing["Link"]
+							print 'Problem with the range pricing for',listing["Link"]
 					listing["Upwards of"] = "offers over" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or "offers from" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower() or u"+" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip() or "plus" in tr.td.next_sibling.next_sibling.next_sibling.next_sibling.text.strip().lower()
 					if listing["Upwards of"] == True:
 						try:
