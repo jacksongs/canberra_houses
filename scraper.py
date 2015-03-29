@@ -229,8 +229,12 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				snatch = []
 				# first let's save the listing if it is a new house
 				if lastlisting == []:
-					scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
-					scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
+					# First we'll check if it's a multi-suburb house.
+					multilisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",(listing["Link"]))
+					if multilisting == []
+						# Now we'll save it
+						scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
+						scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
 
 				# or if there are records listed, let's see if they have changed
 				else:
@@ -246,11 +250,11 @@ for link in scraperwiki.sql.select("* from suburbs"):
 						elif listing[l] == True:
 							if 1 != lastlisting[0][l]:
 								snatch.append(l)
-								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":l,"Old value":True,"New value":False,"Link":listing["Link"]},table_name='changes') 
+								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":l,"Old value":False,"New value":True,"Link":listing["Link"]},table_name='changes') 
 						elif listing[l] == False:
 							if 0 != lastlisting[0][l]:
 								snatch.append(l)
-								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":l,"Old value":False,"New value":True,"Link":listing["Link"]},table_name='changes') 
+								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":l,"Old value":True,"New value":False,"Link":listing["Link"]},table_name='changes') 
 						elif listing[l] != lastlisting[0][l]:
 							snatch.append(l)
 							scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":l,"Old value":lastlisting[0][l],"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
