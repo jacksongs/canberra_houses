@@ -231,7 +231,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 				if lastlisting == []:
 					# First we'll check if it's a multi-suburb house.
 					multilisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",(listing["Link"]))
-					if multilisting == []
+					if multilisting == []:
 						# Now we'll save it
 						scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
 						scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
