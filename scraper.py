@@ -386,7 +386,7 @@ for link in scraperwiki.sql.select("* from suburbs"):
 					if multilisting == []:
 						# Now we'll save it
 						scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
-						scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
+						scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
 
 				# or if there are records listed, let's see if they have changed
 				else:
