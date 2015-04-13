@@ -189,7 +189,7 @@ try:
     	create table listings
         ( 
         id INTEGER PRIMARY KEY AUTOINCREMENT,	
-        Link,
+        Link UNIQUE,
         Suburb,
         Updated
         )
@@ -198,11 +198,12 @@ except:
 	pass
 
 
-for link in scraperwiki.sql.select("* from suburbs"):
+for link in scraperwiki.sql.select("* from suburbs")[5:8]:
 
 	houses = [] # this is to hold all the data on the houses in each suburb for saving to the database
 	
 	page = requests.get("http://allhomes.com.au/"+link["Link"])
+	#print page.content
 	soup = BeautifulSoup(page.content)
 	trs = soup.find_all("tr")
 
@@ -236,8 +237,8 @@ for link in scraperwiki.sql.select("* from suburbs"):
 			# now, the info the icons - this is all house related
 
 			try:
-				icons = tr.td.next_sibling.next_sibling.div.div.next_sibling.next_sibling.next_sibling.next_sibling
-				for i in icons.contents:
+				icons = tr.td.next_sibling.next_sibling.div.div.div.next_sibling.next_sibling
+				for i in icons.children:
 					if isinstance(i, bs4.element.NavigableString) == False:
 						if i.get("class") == ['otherIcons']:
 							for w in i.contents:
@@ -249,13 +250,15 @@ for link in scraperwiki.sql.select("* from suburbs"):
 			# And this is the more generic stuff
 
 			try:
-				house["Type"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip()
+				house["Type"] = tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.div.text.replace("Add to Watchlist","").strip()
 			except Exception as e:
 				print e,link["Link"],'The property type did not work'
-			try:
-				house["EER"] = float(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip())
-			except Exception as e:
-				print e,link["Link"],'The EER did not work'
+			
+			# TURNING OFF EER FOR NOW - TOO MANY ERRORS
+			#try:
+			#	house["EER"] = float(tr.td.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.next_sibling.text.strip())
+			#except Exception as e:
+			#	print e,link["Link"],'The EER did not work'
 								
 			try:
 				house["Address 1"]=tr.td.next_sibling.next_sibling.div.div.a.text.split(",")[0].strip()
@@ -377,39 +380,40 @@ for link in scraperwiki.sql.select("* from suburbs"):
 
 				# now let's get the most recent listing
 				lastlisting = scraperwiki.sql.select("* from listings where Link=? and Suburb=? order by 'Updated' desc limit 1",(listing["Link"],link["Name"]))
-
+				# okay now we have the lastlisting, let's do some things with it
 				snatch = []
 				# first let's save the listing if it is a new house
 				if lastlisting == []:
-					# First we'll check if it's a multi-suburb house.
+					# First we'll check if it's a multi-suburb house. Wouldn't want to save it twice now!
 					multilisting = scraperwiki.sql.select("* from listings where Link=? order by 'Updated' desc limit 1",(listing["Link"],))
 					if multilisting == []:
-						# Now we'll save it
-						scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings')
+						# Now we'll save the listing
+						scraperwiki.sqlite.save(unique_keys=["Link"],data=listing,table_name='listings') #first the house
+						# then the change
 						scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":"New Listing","Old value":None,"New value":None,"Link":listing["Link"]},table_name='changes') 
 
 				# or if there are records listed, let's see if they have changed
 				else:
-
 					for l in listing.keys():
-						if l == 'Updated':
+						if l == 'Updated': # first let's ignore the updated field - obviously the new and old listings would be different
 							pass
-						elif l == 'Auction date':
+						elif l == 'Auction date': # now for auction date we need to conver it to a date for comparison
 							oldvalue = dateutil.parser.parse(lastlisting[0][l],dayfirst=True)
 							if listing[l] != oldvalue:
 								snatch.append(l)
 								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":"Auction date","Old value":oldvalue,"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
-						elif listing[l] == True:
-							if 1 != lastlisting[0][l]:
+						elif listing[l] == True: # now because the API retuns a "1" for true, we need to convert that API value to true
+							if 1 != lastlisting[0][l]: # so if 1 does not equals the last listing field, we note a change
 								snatch.append(l)
 								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":l,"Old value":False,"New value":True,"Link":listing["Link"]},table_name='changes') 
-						elif listing[l] == False:
+						elif listing[l] == False: # and then we do the opposite
 							if 0 != lastlisting[0][l]:
 								snatch.append(l)
 								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":l,"Old value":True,"New value":False,"Link":listing["Link"]},table_name='changes') 
-						elif listing[l] != lastlisting[0][l]:
-							snatch.append(l)
-							scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":l,"Old value":lastlisting[0][l],"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
+						else:
+							if listing[l] != lastlisting[0][l]:
+								snatch.append(l)
+								scraperwiki.sqlite.save(unique_keys=[],data={"Updated":datetime.datetime.now(),"Suburb":link["Name"],"Region":link["Region"],"Change":l,"Old value":lastlisting[0][l],"New value":listing[l],"Link":listing["Link"]},table_name='changes') 
 
 				# if they have changed, let's save the latest listing
 				if len(snatch)>0:
